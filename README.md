@@ -15,10 +15,10 @@ Sign a user's key:
 
 ### options ###
 
-* -c "CONFIG FILE"     use this config file
-* -s "SIGNING KEY"     use this signing key
-* -U USERNAME          sign this user's key
-* -H HOSTNAME          sign this host's key
+    -c FILE               use this config file
+    -s FILE               use this signing key
+    -U USERNAME           sign this user's key
+    -H HOSTNAME           sign this host's key
 
 
 skag-setup
@@ -34,6 +34,6 @@ Set up a skag ssh certificate authority:
 
 ### options ###
 
-* -H DIRECTORY     skag home directory
-* -c FILE          write this config file
-* -s FILE          use (or generate) this signing key
+    -H DIRECTORY     skag home directory
+    -c FILE          write this config file
+    -s FILE          use (or generate) this signing key
