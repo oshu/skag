@@ -5,7 +5,12 @@ A simple tool for Certificate Authority style management of ssh host and user ke
 
 ### usage ###
 
+Sign a server's host key:
+
     skag [OPTIONS] -H HOSTNAME "HOST KEY FILE"
+
+Sign a user's key:
+
     skag [OPTIONS] -U USERNAME -F "FULL NAME" "USER KEY FILE"
 
 ### options ###
@@ -22,6 +27,8 @@ skag-setup
 A setup assistant for skag
 
 ### usage ###
+
+Set up a skag ssh certificate authority:
 
     skag-setup [OPTIONS]
 
