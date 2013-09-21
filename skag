@@ -1,0 +1,176 @@
+#!/bin/bash
+
+# skag - certificate authority for ssh keys
+MY_NAME="${0##*/}"
+SSH_BIN=ssh-keygen
+SKAG_HOME="$HOME/.skag"
+CONFIG_FILE="$SKAG_HOME/skag.conf"
+SIGNING_KEY="$SKAG_HOME/default-signing-key"
+
+
+function usage {
+
+  printf 'Usage: %s [<options>] -H <hostname> <host key file>\n' "$MY_NAME" >&2
+  printf '       %s [<options>] -U <username> -F "<full name>" <user key file>\n' "$MY_NAME" >&2
+  printf 'Options: -c <config file>     use this config file\n' >&2
+  printf '         -s <signing key>     use this signing key\n' >&2
+  printf "         -U <username>       sign this user's key\n" >&2
+  printf "         -H <hostname>        sign this host's key\n" >&2
+  exit 1
+}
+
+
+function process_command_line {
+  # Must be called like this: process_command_line "$@"
+  local _OPTION
+  
+  while getopts ':hc:H:U:F:s:' _OPTION
+  do
+    case $_OPTION in
+      h)
+        usage
+        ;;
+      c)
+        CONFIG_FILE="$OPTARG"
+        ;;
+      s)
+        SIGNING_KEY_PASSED="$OPTARG"
+        ;;
+      H)
+        KEY_HOSTNAME="$OPTARG"
+        ;;
+      U)
+        KEY_USERNAME="$OPTARG"
+        ;;
+      F)
+        KEY_FULLNAME="$OPTARG"
+        ;;
+      :)
+        printf 'ERROR -%s requires an argument\n' "$OPTARG" >&2
+        usage
+        ;;
+    esac
+  done
+  
+  # get the key path
+  shift $(( $OPTIND - 1 ))
+  KEY_PATH="$1"
+
+  # set the mode, user or host
+  if [[ $KEY_HOSTNAME ]] && [[ $KEY_USERNAME ]]
+  then
+    printf 'ERROR -U and -H cannot be combined\n' >&2
+    usage
+  elif [[ $KEY_HOSTNAME ]]
+  then
+    MODE=HOST
+  elif [[ $KEY_USERNAME ]]
+  then
+    MODE=USER
+  else
+    printf 'ERROR missing required option\n' >&2
+    usage
+  fi
+}
+
+
+function process_config_file {
+
+  if [[ -r $CONFIG_FILE ]]
+  then
+    source "$CONFIG_FILE"
+  else
+    printf 'ERROR unable to read config: %s\n' "$CONFIG_FILE" >&2
+    usage
+  fi
+  
+  if [[ $SIGNING_KEY_PASSED ]]
+  then
+    SIGNING_KEY="$SIGNING_KEY_PASSED"
+  fi
+}
+
+
+function check_signing_key {
+
+  if [[ ! -r $SIGNING_KEY ]]
+  then
+    printf 'ERROR unable to read signing key: %s\n' "$SIGNING_KEY" >&2
+    usage
+  fi
+}
+
+
+function sign_host_key {
+
+  local _KEY_HOSTNAME="$1"
+  local _HOST_KEY="$2"
+
+  if [[ -z $_KEY_HOSTNAME ]]
+  then
+    printf 'ERROR no key hostname defined\n' >&2
+    usage
+  fi
+  
+  if [[ ! -f $_HOST_KEY ]]
+  then
+    printf 'ERROR unable to read host keyfile: %s\n' "$_HOST_KEY" >&2
+    usage
+  fi
+  
+  "$SSH_BIN" -s "$SIGNING_KEY" \
+             -I "$_KEY_HOSTNAME" \
+             -h "$_HOST_KEY"
+}
+
+
+function sign_user_key {
+
+  local _KEY_USERNAME=$1
+  local _KEY_FULLNAME="$2"
+  local _USER_KEY="$3"
+
+  if [[ -z $_KEY_USERNAME ]]
+  then
+    printf 'ERROR no key username defined\n' >&2
+    usage
+  fi
+  
+  if [[ -z $_KEY_FULLNAME ]]
+  then
+    printf 'ERROR missing option: -F "<FULL NAME>"\n' >&2
+    usage
+  fi
+  
+  if [[ ! -f $_USER_KEY ]]
+  then
+    printf 'ERROR unable to read user keyfile: %s\n' "$_USER_KEY" >&2
+    usage
+  fi
+  
+  "$SSH_BIN" -s "$SIGNING_KEY" \
+             -I "$_KEY_FULLNAME" \
+             -n $_KEY_USERNAME \
+                "$_USER_KEY"
+}
+
+
+# main
+process_command_line "$@"
+process_config_file
+check_signing_key
+
+case $MODE in
+  HOST)
+    sign_host_key $KEY_HOSTNAME "$KEY_PATH"
+    ;;
+  USER)
+    sign_user_key $KEY_USERNAME "$KEY_FULLNAME" "$KEY_PATH"
+    ;;
+  *)
+    printf 'ERROR missing mode selection (this should not be possible)\n' >&2
+    usage
+    ;;
+esac
+
+exit

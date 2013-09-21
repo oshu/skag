@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# skag-setup - setup assistant for skag
+
+MY_NAME="${0##*/}"
+SSH_BIN=ssh-keygen
+
+# defaults
+SKAG_HOME="$HOME/.skag"
+CONFIG_FILE="$SKAG_HOME/skag.conf"
+SIGNING_KEY="$SKAG_HOME/default-signing-key"
+
+
+function usage {
+
+  printf 'Usage: %s [<options>]\n' "$MY_NAME" >&2
+  printf 'Options: -H <directory>     skag home directory\n' >&2
+  printf '         -c <file>          write this config file\n' >&2
+  printf "         -s <file>          use (or generate) this signing key\n" >&2
+  exit 1
+}
+
+
+function process_command_line {
+  # Must be called like this: process_command_line "$@"
+  local _OPTION
+  
+  while getopts ':hc:H:s:' _OPTION
+  do
+    case $_OPTION in
+      h)
+        usage
+        ;;
+      c)
+        CONFIG_FILE="$OPTARG"
+        ;;
+      s)
+        SIGNING_KEY="$OPTARG"
+        ;;
+      H)
+        SKAG_HOME="$OPTARG"
+        ;;
+      :)
+        printf 'ERROR -%s requires an argument\n' "$OPTARG" >&2
+        usage
+        ;;
+    esac
+  done
+}
+
+
+function create_skag_home {
+  if [[ -d $SKAG_HOME ]]
+  then
+    printf '%s exists, using it\n' "$SKAG_HOME"
+  else
+    printf ' ---> creating skag home directory...\n'
+    mkdir "$SKAG_HOME"
+  fi
+}
+
+
+function create_signing_key {
+  if [[ -f $SIGNING_KEY ]]
+  then
+    printf '%s exists, using it\n' "$SIGNING_KEY"
+  else
+    printf ' ---> generating skag signing key...\n' "$SIGNING_KEY"
+    $SSH_BIN -t rsa -b 4096 -f "$SIGNING_KEY"
+  fi
+}
+
+
+function write_config_file {
+  local _RESPONSE
+
+  if [[ -f $CONFIG_FILE ]]
+  then
+    printf '\nWARNING %s already exists!\n' "$CONFIG_FILE"
+    printf 'Is it OK to destroy it? [yes/no]\n'
+    read -p '> ' _RESPONSE
+  
+    if [[ $_RESPONSE != 'yes' ]]
+    then
+      printf ' ---> quiting...\n'
+      exit 1
+    fi
+  fi
+  printf ' ---> writing config file %s...\n' "$CONFIG_FILE"
+  printf 'SKAG_HOME="%s"\n' "$SKAG_HOME" > "$CONFIG_FILE"
+  printf 'SIGNING_KEY="%s"\n' "$SIGNING_KEY" >> "$CONFIG_FILE"
+}
+
+
+# main
+process_command_line "$@"
+create_skag_home
+create_signing_key
+write_config_file
+
+printf 'skag setup complete\n'
+
+exit
