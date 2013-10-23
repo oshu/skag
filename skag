@@ -14,7 +14,7 @@ function usage {
   printf '       %s [<options>] -U <username> -F "<full name>" <user key file>\n' "$MY_NAME" >&2
   printf 'Options: -c <config file>     use this config file\n' >&2
   printf '         -s <signing key>     use this signing key\n' >&2
-  printf "         -U <username>       sign this user's key\n" >&2
+  printf "         -U <username>        sign this user's key\n" >&2
   printf "         -H <hostname>        sign this host's key\n" >&2
   exit 1
 }
